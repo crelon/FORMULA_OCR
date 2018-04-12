@@ -22,10 +22,18 @@ SET_LIST = cfg.SET_LIST
 
 vocab = open(VOCAB_PATH).readlines()
 formulae = open(FORMULAE_PATH, 'r').readlines()
-char_to_idx = {x.split('\n')[0]: i + 3 for i, x in enumerate(vocab)}
+char_to_idx = {x.split('\n')[0]: i for i, x in enumerate(vocab)}
 char_to_idx['#UNK'] = len(char_to_idx)
 char_to_idx['#START'] = len(char_to_idx)
 char_to_idx['#END'] = len(char_to_idx)
+idx_to_char = {y: x for x, y in char_to_idx.items()}
+properties = {}
+properties['vocab_size'] = len(vocab)
+properties['vocab'] = vocab
+properties['char_to_idx'] = char_to_idx
+properties['idx_to_char'] = idx_to_char
+print('saving properties!!')
+np.save(cfg.DATA_ROOT + 'properties', properties)
 print(len(char_to_idx))
 print(char_to_idx)
 for set in SET_LIST:
