@@ -13,12 +13,13 @@
 '''
 
 from pymongo import MongoClient
-import re, os, sys
+import re, os, sys, requests
 parentdir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(parentdir)
 from PIL import Image
 import tex2pix
 import config as cfg
+from sympy import preview
 '''
 预设地址，端口，数据库名称，collection名称
 '''
@@ -39,6 +40,20 @@ if not os.path.exists(saved_path):
 
 MIN_LENGTH = 20
 MAX_LENGTH = 1024
+
+
+def formula_as_file(formula, file, negate=False):
+    tfile = file
+    if negate:
+        tfile = 'tmp.png'
+    r = requests.get(
+        'http://latex.codecogs.com/png.latex?\dpi{300} \huge %s' % formula)
+    f = open(tfile, 'wb')
+    f.write(r.content)
+    f.close()
+    if negate:
+        os.system(
+            'convert tmp.png -channel RGB -negate -colorspace rgb %s' % file)
 
 
 def url_exist_or_not(content):
@@ -84,7 +99,7 @@ print('database name is %s ,collection name is %s' % (db.name,
 将id，body，url存储进txt中和dictionary中
 '''
 with open('formula.txt', 'w+') as txt:
-    count = 0
+
     # 当前collection中包含的document数量
     length = collections.count()
     print('length', length)
@@ -92,21 +107,22 @@ with open('formula.txt', 'w+') as txt:
         # result = url_exist_or_not(content)
         result = formula_exist_or_not(content)
         if result:
-            id = str(content['_id'])
-            # body = content['body']
-            formula = ''.join(result)
-            dictionary['id'].append(id)
-            # dictionary['body'].append(body)
-            dictionary['formula'].append(result)
-            print(id)
-            saved_info = id + '   ' + str(formula) + '\n'
-            render = tex2pix.Renderer(formula, runbibtex=True)
-            render.mkjpg(cfg.DATA_PULL + id + '.jpg')
-            # print(saved_info)
-            # saved_info.encode('utf-8', 'ignore').decode('utf-8')
-            txt.write(saved_info)
-        count += 1
-        # print('{}/{}...'.format(count, length))
+            count = 0
+            id = content['_id']
+            for res in result:
+                # body = content['body']
+                current_id = str(id) + '_' + str(count)
+                formula = ''.join(res)
+                dictionary['id'].append(id)
+                # dictionary['body'].append(body)
+                dictionary['formula'].append(result)
+                saved_info = current_id + '   ' + str(formula) + '\n'
+                # render = tex2pix.Renderer(formula, runbibtex=True)
+                print(cfg.DATA_PULL + str(current_id) + '.jpg')
+                formula_as_file(formula,
+                                cfg.DATA_PULL + str(current_id) + '.jpg')
+                txt.write(saved_info)
+                count += 1
     print('Done')
 txt.close()
 print('total documents:', len(dictionary['id']))
