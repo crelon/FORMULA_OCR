@@ -1,5 +1,9 @@
+#!/usr/bin/env python
+# _Author_: xiaofeng
+# Date: 2018-04-13 17:20:01
+# Last Modified by: xiaofeng
+# Last Modified time: 2018-04-13 17:20:01
 # -*- coding: utf-8 -*-
-_Author_ = 'xiaofeng'
 '''
 连接MongoDB数据库，找到存在http网址的字符串；
 将url保存并下载到本地，保存位置为'./data/image/'
@@ -10,9 +14,9 @@ _Author_ = 'xiaofeng'
 
 from pymongo import MongoClient
 import re, os
-import requests
 from PIL import Image
-from io import BytesIO
+import tex2pix
+import config as cfg
 '''
 预设地址，端口，数据库名称，collection名称
 '''
@@ -26,13 +30,16 @@ Collection_name = 'problems_info'
 dictionary = {}
 dictionary['id'] = []
 dictionary['body'] = []
-dictionary['url'] = []
+dictionary['formula'] = []
 saved_path = '/Users/xiaofeng/Work_Guanghe/datasets/dataset'
 if not os.path.exists(saved_path):
     os.makedirs(saved_path)
 '''
 判断body中是否存在http网址，并将该网址保存在list中
 '''
+
+MIN_LENGTH = 20
+MAX_LENGTH = 1024
 
 
 def url_exist_or_not(content):
@@ -43,8 +50,19 @@ def url_exist_or_not(content):
 
 def formula_exist_or_not(content):
     read = content['body']
-    result = re.findall('.*\$|\$$(.*)\$|\$$.*', read)
-    return result
+    pattern = [
+        r"\\begin\{equation\}(.*?)\\end\{equation\}", r"\$\$(.*?)\$\$",
+        r"\$(.*?)\$", r"\\\[(.*?)\\\]", r"\\\((.*?)\\\)"
+    ]
+    ret = []
+    for pat in pattern:
+        res = re.findall(pat, read, re.DOTALL)
+        res = [
+            x.strip().replace('\n', '').replace('\r', '') for x in res
+            if MAX_LENGTH > len(x.strip()) > MIN_LENGTH
+        ]
+        ret.extend(res)
+    return ret
 
 
 '''
@@ -66,46 +84,31 @@ print('database name is %s ,collection name is %s' % (db.name,
 '''
 将id，body，url存储进txt中和dictionary中
 '''
-with open('url.txt', 'w+') as txt:
+with open('formula.txt', 'w+') as txt:
     count = 0
     # 当前collection中包含的document数量
     length = collections.count()
+    print('length', length)
     for content in collections.find():
-        print('body 的内容', content)
         # result = url_exist_or_not(content)
         result = formula_exist_or_not(content)
-        print(result)
         if result:
             id = str(content['_id'])
-            body = content['body']
-            url = '\r\n'.join(result)
+            # body = content['body']
+            formula = ''.join(result)
             dictionary['id'].append(id)
-            dictionary['body'].append(body)
-            dictionary['url'].append(result)
-            saved_info = str(id) + ' ' + str(body) + '' + str(url) + '\n'
+            # dictionary['body'].append(body)
+            dictionary['formula'].append(result)
+            print(id)
+            saved_info = id + '   ' + str(formula) + '\n'
+            render = tex2pix.Renderer(formula, runbibtex=True)
+            render.mkjpg(cfg.DATA_PULL + id + '.jpg')
             # print(saved_info)
-            saved_info.encode('utf-8', 'ignore').decode('utf-8')
-            # txt.writelines(saved_info)
+            # saved_info.encode('utf-8', 'ignore').decode('utf-8')
+            txt.write(saved_info)
         count += 1
         # print('{}/{}...'.format(count, length))
     print('Done')
+txt.close()
 print('total documents:', len(dictionary['id']))
-'''
-根据得到的url进行数据下载，并保存在本地；
-在确定网络架构之后，可能没必要进行图片保存在本地，直接使用url就可以
-本次得到的所有图片总共2819张，对应着题目的数量为：2727
-'''
-####### 下载网址图片
-image_nums = len(dictionary['url'])
-image_count = 1
-for i in range(image_nums):
-    for image_src in dictionary['url'][i]:
-        image_name = image_src.split('/')[-1]
-        response = requests.get(image_src)
-        image = Image.open(BytesIO(response.content))
-        saved_name = os.path.join(saved_path, image_name)
-        # saved_name = saved_path + dictionary['id'][i] + '_' + image_name
-        image.save(fp=saved_name)
-        image_count += 1
-        print('{}...'.format(image_count))
-print('done!', 'total image num is:', image_count)
+# 总共存在的公式数量10587
