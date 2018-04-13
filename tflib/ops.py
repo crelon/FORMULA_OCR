@@ -185,7 +185,7 @@ def conv2d(name,
             input,
             filters,
             strides=[1, stride, stride, 1],
-            padding=pad,
+            padding=pad
             # data_format = 'NCHW'
         )
 

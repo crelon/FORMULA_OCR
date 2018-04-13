@@ -12,7 +12,7 @@ def data_iterator(set='train', batch_size=32):
     '''
     Python data generator to facilitate mini-batch training
     Arguments:
-        set - 'train','valid','test' sets
+        set - 'train','validate','test' sets
         batch_size - integer (Usually 32,64,128, etc.)
     '''
     train_dict = np.load(cfg.DATA_ROOT + set + '_buckets.npy').tolist()
@@ -35,7 +35,7 @@ def data_iterator(set='train', batch_size=32):
                 # imgs.append(np.asarray(Image.open(cfg.IMG_DATA_PATH + x)))
                 batch_forms.append(y)
             # 转化成NHWC输入方式
-            imgs = np.asarray(imgs, dtype=np.float32).transpose(0, 2, 3, 1)
+            # imgs = np.asarray(imgs, dtype=np.float32).transpose(0, 2, 3, 1)
             lens = [len(x) for x in batch_forms]
 
             mask = np.zeros((batch_size, max(lens)), dtype=np.int32)

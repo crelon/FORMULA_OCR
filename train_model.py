@@ -15,9 +15,10 @@ import numpy as np
 import data_loaders
 import time
 import os
+import datetime
 import config as cfg
 
-BATCH_SIZE = 20
+BATCH_SIZE = 16
 EMB_DIM = 80
 ENC_DIM = 256
 DEC_DIM = ENC_DIM * 2
@@ -93,6 +94,8 @@ train_step = optimizer.apply_gradients(capped_gvs)
 #### summary
 tf.summary.scalar('model_loss', loss)
 tf.summary.scalar('model_accuracy', accuracy)
+tf.summary.histogram('model_loss_his', loss)
+tf.summary.histogram('model_acc_his', accuracy)
 gradient_norms = [tf.norm(grad) for grad, var in gvs]
 tf.summary.histogram('gradient_norm', gradient_norms)
 tf.summary.scalar('max_gradient_norm', tf.reduce_max(gradient_norms))
@@ -100,10 +103,9 @@ merged = tf.summary.merge_all()
 
 
 ## function to predict the latex
-def score(set='valid', batch_size=32):
+def score(set='valididate', batch_size=32):
     score_itr = data_loaders.data_iterator(set, batch_size)
     losses = []
-    start = time.time()
     for score_imgs, score_seqs, score_mask in score_itr:
         _loss = sess.run(
             loss,
@@ -117,9 +119,9 @@ def score(set='valid', batch_size=32):
 
     perp = np.mean(list(map(lambda x: np.power(np.e, x), losses)))
 
-    print("\tMean  Loss: %s " % set_loss)
-    print("\tTotal Time: {} ".format(time.time() - start))
-    print("\tMean Perplexity: %s " % perp)
+    # print("\tMean  Loss: %s " % set_loss)
+    # print("\tTotal Time: {} ".format(time.time() - start))
+    # print("\tMean Perplexity: %s " % perp)
     return set_loss, perp
 
 
@@ -149,7 +151,6 @@ thread = tf.train.start_queue_runners(sess=sess, coord=coord)
 ## start our custom queue runner's threads
 # custom_runner.start_threads(sess)
 ## 进行预测
-predict()
 
 losses = []
 times = []
@@ -197,9 +198,18 @@ for i in range(i, NB_EPOCHS):
     print("\tMean train perplexity: ",
           np.mean(list(map(lambda x: np.power(np.e, x), costs))))
     print("\tMean time: ", np.mean(times))
+    print('\n\n')
+    print('processing the validate data...')
     val_loss, val_perp = score('valid', BATCH_SIZE)
     print("\tMean val cost: ", val_loss)
     print("\tMean val perplexity: ", val_perp)
+    Info_out = datetime.datetime.now(
+    ).strftime('%Y-%m-%d %H:%M:%S') + '   ' + 'iters/epoch/epoch_nums' % (
+        iter, i, NB_EPOCHS) + '    ' + 'val cost/val perplexity:{}/{}'.format(
+            val_loss, val_perp)
+    with open(summary_path + 'val_loss.txt', 'a') as file:
+        file.writelines(Info_out)
+    file.close()
     if val_perp < best_perp:
         best_perp = val_perp
         saver.save(sess, saver_path)

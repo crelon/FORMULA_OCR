@@ -1,0 +1,21 @@
+A_NOTE: 路径存储信息
+BATCH_SIZE: 20
+CHECKPOINT_PATH: /Users/xiaofeng/Code/Github/dataset/formula/model_saved/ckpt/
+DATA_ROOT: /Users/xiaofeng/Code/Github/dataset/formula/prepared/
+DISPLAY_NUMS: 10
+EPOCH_NUMS: 10000
+FORMULA_PATH: /Users/xiaofeng/Code/Github/dataset/formula/prepared/formulas.norm.lst
+IMG_DATA_PATH: /Users/xiaofeng/Code/Github/dataset/formula/prepared/images_processed/
+LEARNING_RATE: 0.1
+LENGTH: 300
+LOCAL: True
+MIN_LEARNING_RATE: 0.001
+MODEL_SAVED: /Users/xiaofeng/Code/Github/dataset/formula/model_saved/
+PREDICT_PATH: /Users/xiaofeng/Code/Github/dataset/formula/predict/
+PROPERTIES: /Users/xiaofeng/Code/Github/dataset/formula/prepared/properties.npy
+RATIO: [2.5, 7.0, 2.4, 8.0, 4.8, 6.0, 5.6, 5.0, 9.0, 6.4, 3.6, 4.0, 6.0, 5.0, 4.0, 8.0, 7.2]
+SAVED_NUMS: 100
+SET_LIST: ['train', 'test', 'validate']
+SIZE_LIST: [(400, 160), (280, 40), (120, 50), (320, 40), (240, 50), (240, 40), (280, 50), (500, 100), (360, 40), (320, 50), (360, 100), (200, 50), (360, 60), (200, 40), (160, 40), (400, 50), (360, 50)]
+SUMMARY_PATH: /Users/xiaofeng/Code/Github/dataset/formula/model_saved/log/
+VOCAB_PATH: /Users/xiaofeng/Code/Github/dataset/formula/prepared/latex_vocab.txt
