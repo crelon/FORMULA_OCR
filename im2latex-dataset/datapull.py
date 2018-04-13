@@ -13,7 +13,9 @@
 '''
 
 from pymongo import MongoClient
-import re, os
+import re, os, sys
+parentdir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.append(parentdir)
 from PIL import Image
 import tex2pix
 import config as cfg
@@ -34,9 +36,6 @@ dictionary['formula'] = []
 saved_path = '/Users/xiaofeng/Work_Guanghe/datasets/dataset'
 if not os.path.exists(saved_path):
     os.makedirs(saved_path)
-'''
-判断body中是否存在http网址，并将该网址保存在list中
-'''
 
 MIN_LENGTH = 20
 MAX_LENGTH = 1024
