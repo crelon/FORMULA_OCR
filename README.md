@@ -2,6 +2,10 @@
 ```
 This repo is forked from :https://github.com/ritheshkumar95/im2latex-tensorflow
 ```
+## how to make the dataset in your own data
+```
+https://github.com/Miffyli/im2latex-dataset
+```
 This is a tensorflow implementation of the HarvardNLP paper - What You Get Is What You See: A Visual Markup Decompiler.
 
 This is also a potential solution to OpenAI's Requests For Research Problem - [im2latex](https://openai.com/requests-for-research/#im2latex)
