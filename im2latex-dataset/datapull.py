@@ -10,16 +10,21 @@
 图片明明规则：5a45403a8223977701b0aa6a_3.5-Y-A3-2-2-1.png
             object id_src.split('/')[-1]
 可以从图片的名称中，方便的找到该图片对应的数据库中的id以及图片的url地址信息
+    1.将数据库中的body进行正则匹配
+    2.将匹配出来的latex格式进行txt格式存储
+    3.使用latex生成pdf，在转换成png格式
 '''
 
 from pymongo import MongoClient
-import re, os, sys, requests
+import re, os, sys, requests, glob
 parentdir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(parentdir)
+from subprocess import call
+import hashlib
 from PIL import Image
 import tex2pix
 import config as cfg
-from sympy import preview
+from multiprocessing import Pool
 '''
 预设地址，端口，数据库名称，collection名称
 '''
@@ -34,14 +39,53 @@ dictionary = {}
 dictionary['id'] = []
 dictionary['body'] = []
 dictionary['formula'] = []
-saved_path = '/Users/xiaofeng/Work_Guanghe/datasets/dataset'
-if not os.path.exists(saved_path):
-    os.makedirs(saved_path)
 
-MIN_LENGTH = 20
-MAX_LENGTH = 1024
+MIN_LENGTH = 10
+MAX_LENGTH = 500
+MAX_NUMBER = 150 * 1000
+THREADS = 3
+DEVNULL = open(os.devnull, "w")
+# Running a thread pool masks debug output. Set DEBUG to 1 to run
+# formulas over images sequentially to see debug errors more clearly
+DEBUG = False
+FORMULA_TXT = 'formula.txt'
+NAME_TXT = 'name.txt'
+DATASET_FILE = "im2latex.lst"
+NEW_FORMULA_FILE = "im2latex_formulas.lst"
+IMAGE_DIR = '/Users/xiaofeng/Code/Github/dataset/formula/data_formula'
+BASIC_SKELETON = r"""
+\documentclass[12pt]{article}
+\pagestyle{empty}
+\usepackage{amsmath}
+\begin{document}
+
+\begin{displaymath}
+%s
+\end{displaymath}
+
+\end{document}
+"""
+
+RENDERING_SETUPS = {
+    'basic': [
+        BASIC_SKELETON, "convert -density 200 -quality 100 %s.pdf %s.png",
+        lambda filename: os.path.isfile(filename + ".png")
+    ]
+}
 
 
+def remove_temp_files(name):
+    """ Removes .aux, .log, .pdf and .tex files for name """
+    try:
+        os.remove(name + ".aux")
+        os.remove(name + ".log")
+        os.remove(name + ".pdf")
+        os.remove(name + ".tex")
+    except:
+        pass
+
+
+# 通过使用网址‘http://latex.codecogs.com’来生成img，会存在很多无法识别的情况
 def formula_as_file(formula, file, negate=False):
     tfile = file
     if negate:
@@ -56,12 +100,14 @@ def formula_as_file(formula, file, negate=False):
             'convert tmp.png -channel RGB -negate -colorspace rgb %s' % file)
 
 
+# 进行网址信息的正则匹配
 def url_exist_or_not(content):
     read = content['body']
     result = re.findall("(?isu)(http\://[a-zA-Z0-9\.\?%+-/&\=\:]+)", read)
     return result
 
 
+# 进行公式的正则匹配
 def formula_exist_or_not(content):
     read = content['body']
     pattern = [
@@ -73,57 +119,178 @@ def formula_exist_or_not(content):
         res = re.findall(pat, read, re.DOTALL)
         res = [
             x.strip().replace('\n', '').replace('\r', '') for x in res
-            if MAX_LENGTH > len(x.strip()) > MIN_LENGTH
+            if MAX_LENGTH > len(list(set(x.strip()))) > MIN_LENGTH
         ]
         ret.extend(res)
     return ret
 
 
-'''
-连接数据库，进行待分析位置的定位
-'''
+# 连接数据库，进行待分析位置的定位
 # 创建MongoDB连接
 client = MongoClient(host=Host, port=Port)
-# print('which database does the client stored', client.database_names())
-
 # 选择要连接的数据库名称
 db = client[database_name]
-# print('which collections does the database--%s stored' % db.name, db.collection_names())
-
 # 选择当前数据库下的指定名称的collection
 collections = db[Collection_name]
 
 print('database name is %s ,collection name is %s' % (db.name,
                                                       collections.name))
 '''
-将id，body，url存储进txt中和dictionary中
+将id，formula存储进txt中和dictionary中
 '''
-with open('formula.txt', 'w+') as txt:
 
+
+# 生成公式txt
+def formula_txt():
     # 当前collection中包含的document数量
-    length = collections.count()
-    print('length', length)
-    for content in collections.find():
-        # result = url_exist_or_not(content)
-        result = formula_exist_or_not(content)
-        if result:
-            count = 0
-            id = content['_id']
-            for res in result:
-                # body = content['body']
-                current_id = str(id) + '_' + str(count)
-                formula = ''.join(res)
-                dictionary['id'].append(id)
-                # dictionary['body'].append(body)
-                dictionary['formula'].append(result)
-                saved_info = current_id + '   ' + str(formula) + '\n'
-                # render = tex2pix.Renderer(formula, runbibtex=True)
-                print(cfg.DATA_PULL + str(current_id) + '.jpg')
-                formula_as_file(formula,
-                                cfg.DATA_PULL + str(current_id) + '.jpg')
-                txt.write(saved_info)
-                count += 1
-    print('Done')
-txt.close()
-print('total documents:', len(dictionary['id']))
-# 总共存在的公式数量10587
+    with open(FORMULA_TXT, 'w') as f:
+        with open(NAME_TXT, 'w') as g:
+            length = collections.count()
+            print('total length', length)
+            number = 1
+            for content in collections.find():
+                # result = url_exist_or_not(content)
+                result = formula_exist_or_not(content)
+                if result:
+                    count = 0
+                    id = content['_id']
+                    for res in result:
+                        current_id = str(id) + '_' + str(count)
+                        formula = ''.join(res)
+                        formu_info = str(formula) + '\n'
+                        name_info = current_id + '\n'
+                        f.write(formu_info)
+                        g.write(name_info)
+                        count += 1
+                        number += 1
+    print('生成的公式数量', number)
+
+
+def formula_to_image(formula):
+    """ Turns given formula into images based on RENDERING_SETUPS
+    returns list of lists [[image_name, rendering_setup], ...], one list for
+    each rendering.
+    Return None if couldn't render the formula"""
+    formula = formula.strip("%")
+    name = hashlib.sha1(formula.encode('utf-8')).hexdigest()[:-1]
+    ret = []
+    skiping = []
+    for rend_name, rend_setup in RENDERING_SETUPS.items():
+        full_path = name + "_" + rend_name
+        if len(rend_setup) > 2 and rend_setup[2](full_path):
+            print("Skipping, already done: " + full_path)
+            if full_path not in skiping:
+                skiping.append(full_path)
+            ret.append([full_path, rend_name])
+            continue
+        # Create latex source
+        latex = rend_setup[0] % formula
+        # Write latex source
+        with open(full_path + ".tex", "w") as f:
+            f.write(latex)
+
+        # Call pdflatex to turn .tex into .pdf
+        code = call(
+            [
+                "pdflatex", '-interaction=nonstopmode', '-halt-on-error',
+                full_path + ".tex"
+            ],
+            stdout=DEVNULL,
+            stderr=DEVNULL)
+        if code != 0:
+            os.system("rm -rf " + full_path + "*")
+            return None
+
+        # Turn .pdf to .png
+        # Handles variable number of places to insert path.
+        # i.e. "%s.tex" vs "%s.pdf %s.png"
+        full_path_strings = rend_setup[1].count("%") * (full_path, )
+        # print('full_path', full_path)
+        # print('full_path_strings',
+        #       (rend_setup[1] % full_path_strings).split(" "))
+        code = call(
+            (rend_setup[1] % full_path_strings).split(" "),
+            stdout=DEVNULL,
+            stderr=DEVNULL)
+        # # 生成png文件
+        # print(full_path + '.pdf')
+        # _run_convert(filename=full_path + '.pdf', page=0)
+
+        #Remove files
+        try:
+            remove_temp_files(full_path)
+        except Exception as e:
+            # try-except in case one of the previous scripts removes these files
+            # already
+            return None
+
+        # Detect of convert created multiple images -> multi-page PDF
+        resulted_images = glob.glob(full_path + "-*")
+        if code != 0:
+            # Error during rendering, remove files and return None
+            os.system("rm -rf " + full_path + "*")
+            return None
+        elif len(resulted_images) > 1:
+            # We have multiple images for same formula
+            # Discard result and remove files
+            for filename in resulted_images:
+                os.system("rm -rf " + filename + "*")
+            return None
+        else:
+            ret.append([full_path, rend_name])
+    with open('skiping.txt', 'w') as skp:
+        skp.write('\n'.join(skiping))
+
+    return ret
+
+
+def main():
+    if not os.path.exists(FORMULA_TXT) and not os.path.exists(NAME_TXT):
+        formula_txt()
+    else:
+        formulas = open(FORMULA_TXT).read().split('\n')
+        names = open(NAME_TXT).read().split('\n')
+        try:
+            os.mkdir(IMAGE_DIR)
+        except OSError as e:
+            pass  #except because throws OSError if dir exists
+        print("Turning formulas into images...")
+        # Change to image dir because textogif doesn't seem to work otherwise...
+        oldcwd = os.getcwd()
+        # Check we are not in image dir yet (avoid exceptions)
+        if not IMAGE_DIR in os.getcwd():
+            os.chdir(IMAGE_DIR)
+
+        names = None
+
+        if DEBUG:
+            names = [formula_to_image(formula) for formula in formulas]
+        else:
+            pool = Pool(THREADS)
+            names = list(pool.imap(formula_to_image, formulas))
+        # 切换到到当前路径
+        os.chdir(oldcwd)
+
+        zipped = list(zip(formulas, names))
+
+        new_dataset_lines = []
+        new_formulas = []
+        ctr = 0
+        for formula in zipped:
+            if formula[1] is None:
+                continue
+            for rendering_setup in formula[1]:
+                new_dataset_lines.append(
+                    str(ctr) + " " + " ".join(rendering_setup))
+            new_formulas.append(formula[0])
+            ctr += 1
+        print('total', ctr)
+        with open(NEW_FORMULA_FILE, "w") as f:
+            f.write("\n".join(new_formulas))
+
+        with open(DATASET_FILE, "w") as f:
+            f.write("\n".join(new_dataset_lines))
+
+
+if __name__ == '__main__':
+    main()

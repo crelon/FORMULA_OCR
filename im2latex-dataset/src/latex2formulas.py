@@ -32,7 +32,7 @@ PATTERNS = [
 DIR = ""
 
 #Number of bytes required for formula to be saved
-MIN_LENGTH = 40
+MIN_LENGTH = 10
 MAX_LENGTH = 1024
 
 

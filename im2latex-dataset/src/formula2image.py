@@ -104,6 +104,7 @@ def formula_to_image(formula):
     ret = []
     for rend_name, rend_setup in RENDERING_SETUPS.items():
         full_path = name + "_" + rend_name
+        print('full_path', full_path)
         if len(rend_setup) > 2 and rend_setup[2](full_path):
             print("Skipping, already done: " + full_path)
             ret.append([full_path, rend_name])
@@ -122,6 +123,7 @@ def formula_to_image(formula):
             ],
             stdout=DEVNULL,
             stderr=DEVNULL)
+        print('code ---------', code)
         if code != 0:
             os.system("rm -rf " + full_path + "*")
             return None
@@ -130,6 +132,8 @@ def formula_to_image(formula):
         # Handles variable number of places to insert path.
         # i.e. "%s.tex" vs "%s.pdf %s.png"
         full_path_strings = rend_setup[1].count("%") * (full_path, )
+        print('full_path_strings',
+              (rend_setup[1] % full_path_strings).split(" "))
         code = call(
             (rend_setup[1] % full_path_strings).split(" "),
             stdout=DEVNULL,
@@ -145,7 +149,7 @@ def formula_to_image(formula):
 
         # Detect of convert created multiple images -> multi-page PDF
         resulted_images = glob.glob(full_path + "-*")
-
+        print('result_images', resulted_images)
         if code != 0:
             # Error during rendering, remove files and return None
             os.system("rm -rf " + full_path + "*")
@@ -163,6 +167,7 @@ def formula_to_image(formula):
 
 def main(formula_list):
     formulas = open(formula_list).read().split("\n")[:MAX_NUMBER]
+
     try:
         os.mkdir(IMAGE_DIR)
     except OSError as e:
@@ -215,8 +220,8 @@ def check_validity(dataset_file, formula_file, formula_dir):
     missing_files = 0
 
     for line in dataset_lines:
-        if line == "": continue
-        splt = line.split(" ")
+        if line == '': continue
+        splt = line.split(' ')
         max_id = splt[0]
         if not splt[1] + ".png" in formula_images:
             missing_files += 1
