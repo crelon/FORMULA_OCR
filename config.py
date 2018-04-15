@@ -6,7 +6,8 @@ if LOCAL:
     DATA_ROOT = '/Users/xiaofeng/Code/Github/dataset/formula/prepared/'
     MODEL_SAVED = '/Users/xiaofeng/Code/Github/dataset/formula/model_saved/'
     PREDICT_PATH = '/Users/xiaofeng/Code/Github/dataset/formula/predict/'
-
+    # DATA_PULL = '/Users/xiaofeng/Code/Github/dataset/formula/data_pull/'
+    DATA_PULL = '/Users/xiaofeng/Code/Github/dataset/formula/data_formula/'
 else:
     DATA_ROOT = '/home/xiaofeng/data/formula/prepared/'
     MODEL_SAVED = '/home/xiaofeng/data/formula/model_saved_remote/'
@@ -21,7 +22,7 @@ FORMULA_PATH = DATA_ROOT + 'formulas.norm.lst'
 IMG_DATA_PATH = DATA_ROOT + 'images_processed/'
 CHECKPOINT_PATH = MODEL_SAVED + 'ckpt/'
 SUMMARY_PATH = MODEL_SAVED + 'log/'
-PROPERTIES= DATA_ROOT + 'properties.npy'
+PROPERTIES = DATA_ROOT + 'properties.npy'
 LENGTH = 300
 SIZE_LIST = [(400, 160), (280, 40), (120, 50), (320, 40), (240, 50), (240, 40),
              (280, 50), (500, 100), (360, 40), (320, 50), (360, 100),
