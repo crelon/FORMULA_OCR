@@ -166,3 +166,4 @@ def predict_img_latex(file):
 
 predict_img_latex('./1.jpg')
 # predict_img_latex('./images_processed/570d6766c0.png')
+latex

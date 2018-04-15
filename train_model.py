@@ -24,14 +24,13 @@ ENC_DIM = 256
 DEC_DIM = ENC_DIM * 2
 NUM_FEATS_START = 64
 D = NUM_FEATS_START * 8
-V = 506  # vocab size
+V = cfg.V_OUT  # vocab size
 NB_EPOCHS = 100000
 H = 20
 W = 50
 PRECEPTION = 0.6
 LEARNING_DECAY = 20000
 LENGTH = cfg.LENGTH
-LOCAL = True
 IMG_PATH = cfg.IMG_DATA_PATH
 PREDICT_PATH = cfg.PREDICT_PATH
 PROPERTIES = cfg.PROPERTIES
@@ -200,13 +199,14 @@ for i in range(i, NB_EPOCHS):
     print("\tMean time: ", np.mean(times))
     print('\n\n')
     print('processing the validate data...')
-    val_loss, val_perp = score('valid', BATCH_SIZE)
+    val_loss, val_perp = score('validate', BATCH_SIZE)
     print("\tMean val cost: ", val_loss)
     print("\tMean val perplexity: ", val_perp)
-    Info_out = datetime.datetime.now(
-    ).strftime('%Y-%m-%d %H:%M:%S') + '   ' + 'iters/epoch/epoch_nums' % (
-        iter, i, NB_EPOCHS) + '    ' + 'val cost/val perplexity:{}/{}'.format(
-            val_loss, val_perp)
+    Info_out = datetime.datetime.now().strftime(
+        '%Y-%m-%d %H:%M:%S') + '   ' + 'iter/epoch/epoch_nums-%d/%d/%d' % (
+            iter, i,
+            NB_EPOCHS) + '    ' + 'val cost/val perplexity:{}/{}'.format(
+                val_loss, val_perp)
     with open(summary_path + 'val_loss.txt', 'a') as file:
         file.writelines(Info_out)
     file.close()
